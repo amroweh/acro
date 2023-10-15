@@ -55,16 +55,6 @@ async function getByAcronymAndDepartment(acronym, department) {
   );
 }
 
-async function addAcronym(acronym, department, definition) {
-  let sqlInsert = `INSERT INTO acronyms (acronym, department, definition) SELECT '${acronym}', '${department}', '${definition}' WHERE NOT EXISTS (SELECT acronym, department FROM acronyms WHERE acronym='${acronym}' AND department='${department}')`;
-  return new Promise((resolve, reject) => {
-    db.run(sqlInsert, [], (err) => {
-      if (err) reject(err);
-      else resolve("data successfully added into database");
-    });
-  });
-}
-
 // Textualise results
 function resultText(result) {
   let definitions = "";
@@ -94,6 +84,7 @@ async function run() {
 
   app.message(/^(acro|define).*/, async ({ message, say }) => {
     const words = message.text.split(" ");
+    // case: acro
 
     const acronym = words[1];
     const department = words[2];
@@ -121,55 +112,8 @@ async function run() {
   });
 
   // DESIGN THIS NOT TO EXCLUDE THE ABOVE REGEX
-  // app.message(/^/, async ({message, say}) => {
-  //   await say(showCommands())
-  // })
-
-  // These will be used in the next two blocks:
-  let acronym = null;
-  let definition = null;
-  let isAdding = false;
-
-  app.message(/^(add).*/, async ({ message, say, respond }) => {
-    const words = message.text.split(" ");
-
-    acronym = words[1];
-    definition = words.slice(2).join(" ");
-
-    console.log("acronym:" + acronym);
-    console.log("definition:" + definition);
-
-    if (acronym && definition) {
-      await say(
-        "Would you like to add this acronym to a specific department? If so, please type in the department name and press enter (type no otherwise, or cancel to stop this):"
-      );
-      isAdding = true;
-      return;
-    } else
-      await say(
-        "You must use the following syntax to add an acronym: add <acronym> <definition>"
-      );
-  });
-
-  app.message(async ({ message, say }) => {
-    if (isAdding) {
-      if (message.text === "cancel") {
-        await say("This operation has been cancelled.");
-      } else if (message.text === "no") {
-        await addAcronym(acronym, "none", definition);
-        await say(
-          "Thank you for adding this acronym! This has now been registered in our database"
-        );
-      } else {
-        await addAcronym(acronym, message.text, definition);
-        await say(
-          "Thank you for adding this acronym! This has now been registered in our database"
-        );
-      }
-      acronym = null;
-      definition = null;
-      isAdding = false;
-    }
+  app.message(/^/, async ({ message, say }) => {
+    await say(showCommands());
   });
 
   console.log(`⚡️ ACRO app is running!`);
