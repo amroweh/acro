@@ -1,8 +1,6 @@
 require("dotenv").config();
 
-const Database = require("@replit/database");
 const sqlite3 = require("sqlite3").verbose();
-const axios = require("axios");
 const { App } = require("@slack/bolt");
 const signingSecret = process.env["SLACK_SIGNING_SECRET"];
 const botToken = process.env["SLACK_BOT_TOKEN"];
