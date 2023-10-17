@@ -4,6 +4,21 @@ const sqlite3 = require("sqlite3").verbose();
 const { App } = require("@slack/bolt");
 const signingSecret = process.env["SLACK_SIGNING_SECRET"];
 const botToken = process.env["SLACK_BOT_TOKEN"];
+const {
+  resultText,
+  unknownAcro,
+  showCommands,
+  greet,
+  acronymExists,
+  acronymDoesntExist,
+  acronymAdded,
+  acronymUpdated,
+  operationCancelled,
+  incorrectAdd,
+  incorrectUpdate,
+  promptAddToDepartment,
+  promptUpdateInDepartment,
+} = require("./utils.js");
 
 // Initialise the Slack Bot App using the slack bolt api
 const app = new App({
@@ -54,7 +69,7 @@ async function getByAcronymAndDepartment(acronym, department) {
 }
 
 async function addAcronym(acronym, department, definition) {
-  let sqlInsert = `INSERT INTO acronyms (acronym, department, definition) SELECT '${acronym}', '${department}', '${definition}' WHERE NOT EXISTS (SELECT acronym, department FROM acronyms WHERE acronym='${acronym}' AND department='${department}')`;
+  let sqlInsert = `INSERT INTO acronyms (acronym, department, definition) SELECT '${acronym.toLowerCase()}', '${department}', '${definition}' WHERE NOT EXISTS (SELECT acronym, department FROM acronyms WHERE acronym='${acronym.toLowerCase()}' AND department='${department}')`;
   return new Promise((resolve, reject) => {
     db.run(sqlInsert, [], (err) => {
       if (err) reject(err);
@@ -63,31 +78,30 @@ async function addAcronym(acronym, department, definition) {
   });
 }
 
-// Textualise results
-function resultText(result) {
-  let definitions = "";
-  result.forEach(
-    (el) => (definitions += "- " + el.definition + " (" + el.department + ")\n")
-  );
-  return definitions;
-}
+async function updateAcronym(acronym, newDefinition, department = "none") {
+  const getResult = await getByAcronymAndDepartment(acronym, department);
+  console.log(getResult);
 
-function unknownAcro(acronym) {
-  return `Unfortunately, we do not know what ${acronym} means yet. If you would like to add it or request its meaning, you can use 'add <acronym>' or 'request <acronym>'`;
-}
-
-function showCommands() {
-  return `The following commands are currently supported:\nastro <acronym>\nastro <acronym>\nastro <acronym> <department>\ndefine <acronym>\ndefine <acronym> <department>\nhelp\n`;
+  let sqlUpdate = `UPDATE acronyms set definition='${newDefinition}' WHERE acronym='${acronym}' AND department='${department}'`;
+  console.log(sqlUpdate);
+  return new Promise((resolve, reject) => {
+    db.run(sqlUpdate, [], (err) => {
+      if (err) reject(err);
+      else resolve("data successfully updated");
+    });
+  });
 }
 
 // Run the bot - Includes all possible replies based on what the user inputs
 async function run() {
-  await app.start(process.env.PORT || 12000);
+  await app.start(process.env.PORT || 11000);
 
   app.message(/^(hello|hey|hi|yo)$/, async ({ message, say }) => {
-    await say(
-      "Hello from ACRO! This is your helpful bot for all Sky acronyms. To get started, try acro <acronym>. For example, acro CORS"
-    );
+    await say(greet());
+  });
+
+  app.message(/^(help)$/, async ({ message, say }) => {
+    await say(showCommands());
   });
 
   app.message(/^(acro|define).*/, async ({ message, say }) => {
@@ -99,8 +113,7 @@ async function run() {
     // subcase 1: acro <some_acronym> <some_department>
     if (acronym && department) {
       const result = await getByAcronymAndDepartment(acronym, department);
-      if (result && result.length > 0)
-        await say("This acronym may mean: \n" + resultText(result));
+      if (result && result.length > 0) await say(resultText(result));
       else await say(unknownAcro(acronym));
       return;
     }
@@ -108,8 +121,7 @@ async function run() {
     // subcase 2: acro <some_acronym>
     if (acronym) {
       const result = await getByAcronym(acronym);
-      if (result && result.length > 0)
-        await say("This acronym may mean: \n" + resultText(result));
+      if (result && result.length > 0) await say(resultText(result));
       else await say(unknownAcro(acronym));
       return;
     }
@@ -118,55 +130,88 @@ async function run() {
     return await say(showCommands());
   });
 
-  // DESIGN THIS NOT TO EXCLUDE THE ABOVE REGEX
-  // app.message(/^/, async ({message, say}) => {
-  //   await say(showCommands())
-  // })
-
   // These will be used in the next two blocks:
   let acronym = null;
   let definition = null;
   let isAdding = false;
+  let isUpdating = false;
 
+  // add acri
   app.message(/^(add).*/, async ({ message, say, respond }) => {
     const words = message.text.split(" ");
 
     acronym = words[1];
     definition = words.slice(2).join(" ");
 
-    console.log("acronym:" + acronym);
-    console.log("definition:" + definition);
-
     if (acronym && definition) {
-      await say(
-        "Would you like to add this acronym to a specific department? If so, please type in the department name and press enter (type no otherwise, or cancel to stop this):"
-      );
+      await say(promptAddToDepartment());
       isAdding = true;
       return;
-    } else
-      await say(
-        "You must use the following syntax to add an acronym: add <acronym> <definition>"
-      );
+    } else await say(incorrectAdd());
   });
 
+  // Update acro
+  app.message(/^(update).*/, async ({ message, say }) => {
+    const words = message.text.split(" ");
+
+    acronym = words[1];
+    definition = words.slice(2).join(" ");
+
+    if (acronym && definition) {
+      await say(promptUpdateInDepartment());
+      isUpdating = true;
+      return;
+    } else await say(incorrectUpdate());
+  });
+
+  // check follow up after add or update
   app.message(async ({ message, say }) => {
     if (isAdding) {
       if (message.text === "cancel") {
-        await say("This operation has been cancelled.");
+        await say(operationCancelled());
       } else if (message.text === "no") {
-        await addAcronym(acronym, "none", definition);
-        await say(
-          "Thank you for adding this acronym! This has now been registered in our database"
-        );
+        const check = await getByAcronym(acronym);
+        if (check.length > 0) {
+          await say(acronymExists());
+        } else {
+          await addAcronym(acronym, "none", definition);
+          await say(acronymAdded());
+        }
       } else {
-        await addAcronym(acronym, message.text, definition);
-        await say(
-          "Thank you for adding this acronym! This has now been registered in our database"
-        );
+        const check = await getByAcronymAndDepartment(acronym, message.text);
+        if (check.length > 0) {
+          await say(acronymExists(department));
+        } else {
+          await addAcronym(acronym, message.text, definition);
+          await say(acronymAdded());
+        }
       }
       acronym = null;
       definition = null;
       isAdding = false;
+      return;
+    }
+
+    if (isUpdating) {
+      if (message.text === "cancel") {
+        await say(operationCancelled());
+      } else if (message.text === "no") {
+        const check = await getByAcronym(acronym);
+        if (check.length > 0) {
+          await updateAcronym(acronym, definition);
+          await say(acronymUpdated());
+        } else await say(acronymDoesntExist());
+      } else {
+        const check = await getByAcronymAndDepartment(acronym, message.text);
+        if (check.length > 0) {
+          await updateAcronym(acronym, definition, message.text);
+          await say(acronymUpdated());
+        } else await say(acronymDoesntExist(message.text));
+      }
+      acronym = null;
+      definition = null;
+      isUpdating = false;
+      return;
     }
   });
 
