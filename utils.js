@@ -1,7 +1,6 @@
 function resultText(result) {
   let definitions = "This acronym may mean: \n";
   result.forEach((el) => {
-    console.log(el.department);
     const department =
       el.department !== "none" ? "_(" + el.department + ")_" : "";
     definitions +=
