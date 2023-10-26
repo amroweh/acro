@@ -2,6 +2,7 @@ require("dotenv").config();
 const { App } = require("@slack/bolt");
 const signingSecret = process.env["SLACK_SIGNING_SECRET"];
 const botToken = process.env["SLACK_BOT_TOKEN"];
+const appToken = process.env["SLACK_APP_TOKEN"];
 const {
   resultText,
   unknownAcro,
@@ -30,13 +31,21 @@ const {
 
 // Initialise the Slack Bot App using the slack bolt api
 const app = new App({
-  signingSecret: signingSecret,
+  //signingSecret: signingSecret,
   token: botToken,
+  appToken: appToken,
+  socketMode: true,
 });
 
 // Run the bot - Includes all possible replies based on what the user inputs
 async function run() {
-  await app.start(process.env.PORT || 13000);
+  await app.start(process.env.PORT || 10000);
+
+  // Use this later if you want to create some functionality on mention
+  // app.event('app_mention', async ({ message, event, context, client, say }) => {
+  //   console.log(message)
+  //   await say("HELLOOOZZ");
+  // });
 
   app.message(/^(hello|hey|hi|yo)$/, async ({ message, say }) => {
     await say(greet());

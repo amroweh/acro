@@ -1,0 +1,9 @@
+Short Description
+A helpful bot to find out what those pesky acronyms mean
+
+BG Color
+#121112
+
+Long Desription
+You can use this helpful bot to understand what some acronyms used at Sky mean. For instance, you can use `acro CORS` to find out what CORS stands for. 
+To view a complete list of supported commands, you can enter `help`.
