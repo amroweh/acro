@@ -4,7 +4,13 @@ function resultText(result) {
     const department =
       el.department !== "none" ? "_(" + el.department + ")_" : "";
     definitions +=
-      ":white_small_square: *" + el.definition + "* " + department + "\n";
+      ":white_small_square: *" +
+      el.acronym +
+      ": " +
+      el.definition +
+      "* " +
+      department +
+      "\n";
   });
   return definitions;
 }
@@ -24,10 +30,24 @@ function getDepartmentFromIndex(index) {
   return Departments[index];
 }
 
-function departmentList() {
+function departmentExists(department) {
+  for (const key in Departments)
+    if (department == Departments[key]) return true;
+  return false;
+}
+
+function departmentList_num() {
   let departmentsList = "";
   for (let i in Departments) {
     departmentsList += "`" + i + "`" + ": " + Departments[i] + "\n";
+  }
+  return departmentsList;
+}
+
+function departmentList_dep() {
+  let departmentsList = "";
+  for (let i in Departments) {
+    departmentsList += "`" + Departments[i] + "`" + "\n";
   }
   return departmentsList;
 }
@@ -54,6 +74,10 @@ function acronymAdded() {
 
 function acronymUpdated() {
   return ":white_check_mark: Success. This acronym has been updated in our database.";
+}
+
+function acronymDeleted() {
+  return ":white_check_mark: Success. This acronym has been deleted from our database.";
 }
 
 function acronymExists(department) {
@@ -86,17 +110,25 @@ function invalidDepartment() {
   return ":x: Only the listed indices can be chosen. Aborting...";
 }
 
+function departmentNameInvalid() {
+  return (
+    ":x: The department you have provided does not exist. Please use one of the following:\n" +
+    departmentList_dep() +
+    "Aborting..."
+  );
+}
+
 function promptAddToDepartment() {
   return (
     ":warning: Would you like to add this acronym to a specific department? If so, please enter the number of that department: (enter `no` otherwise, or `cancel` to stop this):\n" +
-    departmentList()
+    departmentList_num()
   );
 }
 
 function promptUpdateInDepartment() {
   return (
     ":warning: Would you like to update this acronym at a specific department? If so, please enter the number of that department: (enter `no` otherwise, or `cancel` to stop this):\n" +
-    departmentList()
+    departmentList_num()
   );
 }
 
@@ -117,11 +149,14 @@ module.exports = {
   acronymDoesntExist,
   acronymAdded,
   acronymUpdated,
+  acronymDeleted,
   operationCancelled,
   incorrectAdd,
   incorrectUpdate,
   promptAddToDepartment,
   promptUpdateInDepartment,
+  departmentExists,
+  departmentNameInvalid,
   getDepartmentFromIndex,
   invalidDepartment,
 };

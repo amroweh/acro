@@ -2,7 +2,7 @@ require("dotenv").config();
 const { App } = require("@slack/bolt");
 const signingSecret = process.env["SLACK_SIGNING_SECRET"];
 const botToken = process.env["SLACK_BOT_TOKEN"];
-const appToken = process.env["SLACK_APP_TOKEN"];
+//const appToken = process.env["SLACK_APP_TOKEN"];
 const {
   resultText,
   unknownAcro,
@@ -12,11 +12,14 @@ const {
   acronymDoesntExist,
   acronymAdded,
   acronymUpdated,
+  acronymDeleted,
   operationCancelled,
   incorrectAdd,
   incorrectUpdate,
   promptAddToDepartment,
   promptUpdateInDepartment,
+  departmentExists,
+  departmentNameInvalid,
   getDepartmentFromIndex,
   invalidDepartment,
 } = require("./utils.js");
@@ -25,27 +28,22 @@ const {
   getByAcronym,
   getByAcronymAndDepartment,
   addAcronym,
+  deleteAcronym,
   updateAcronym,
   getAll,
 } = require("./db_functions.js");
 
 // Initialise the Slack Bot App using the slack bolt api
 const app = new App({
-  //signingSecret: signingSecret,
+  signingSecret: signingSecret,
   token: botToken,
-  appToken: appToken,
-  socketMode: true,
+  //appToken: appToken, NOTE: NEED TO CHANGE THIS SINCE I REMOVED THE APP LEVEL TOKEN (I.E. CREATE NEW ONE)
+  //socketMode: true,
 });
 
 // Run the bot - Includes all possible replies based on what the user inputs
 async function run() {
   await app.start(process.env.PORT || 10000);
-
-  // Use this later if you want to create some functionality on mention
-  // app.event('app_mention', async ({ message, event, context, client, say }) => {
-  //   console.log(message)
-  //   await say("HELLOOOZZ");
-  // });
 
   app.message(/^(hello|hey|hi|yo)$/, async ({ message, say }) => {
     await say(greet());
@@ -88,11 +86,12 @@ async function run() {
   // These will be used in the next two blocks:
   let acronym = null;
   let definition = null;
+  let department = null;
   let isAdding = false;
   let isUpdating = false;
 
   // add acronym
-  app.message(/^(add).*/, async ({ message, say, respond }) => {
+  app.message(/^(add).*/, async ({ message, say }) => {
     const words = message.text.split(" ");
 
     acronym = words[1];
@@ -117,6 +116,35 @@ async function run() {
       isUpdating = true;
       return;
     } else await say(incorrectUpdate());
+  });
+
+  // Delete acro
+  app.message(/^(delete).*/, async ({ message, say }) => {
+    const words = message.text.split(" ");
+
+    acronym = words[1];
+    department = words.slice(2).join(" ");
+
+    if (acronym && department) {
+      // if department is incorrect, return
+      if (!departmentExists(department)) {
+        await say(departmentNameInvalid());
+        return;
+      }
+      // if acronym doesn't exist, return, else delete it
+      const check = await getByAcronymAndDepartment(acronym, department);
+      if (check.length > 0) {
+        await deleteAcronym(acronym, department);
+        await say(acronymDeleted());
+      } else await say(acronymDoesntExist(department));
+      return;
+    } else await say(incorrectUpdate());
+
+    // if(acronym){
+    //   await say(promptUpdateInDepartment());
+    //   isUpdating = true;
+    //   return;
+    // }
   });
 
   // check follow up after add or update

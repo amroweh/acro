@@ -7,3 +7,6 @@ BG Color
 Long Desription
 You can use this helpful bot to understand what some acronyms used at Sky mean. For instance, you can use `acro CORS` to find out what CORS stands for. 
 To view a complete list of supported commands, you can enter `help`.
+
+Sky Workspace Request
+Hello, this is a small bot that helps define/add/update certain Sky-specific acronyms. It only requires the following scopes to work: chat:write and im:history. It takes a message provided by the user, and based on that returns a definition or updates/adds one.

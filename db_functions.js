@@ -10,12 +10,12 @@ const db = new sqlite3.Database("./db.db", sqlite3.OPEN_READWRITE, (err) => {
 function setupDB() {
   let sql;
   // Drop Table
-  sql = `DROP TABLE acronyms`;
-  db.run(sql);
+  //sql = `DROP TABLE acronyms`;
+  //db.run(sql);
   // Create Table
-  console.log("creating table...");
-  sql = `CREATE TABLE acronyms(id Integer PRIMARY KEY, acronym, definition, department)`;
-  db.run(sql);
+  // console.log("creating table...")
+  // sql = `CREATE TABLE acronyms(id Integer PRIMARY KEY, acronym, definition, department)`;
+  // db.run(sql);
   // Add Entries
   let sqlInsert = `INSERT INTO acronyms(acronym, definition, department) VALUES (?,?,?)`;
   const initialValues = [
@@ -72,12 +72,21 @@ async function addAcronym(acronym, department, definition) {
   });
 }
 
+async function deleteAcronym(acronym, department, definition) {
+  let sqlInsert = `DELETE FROM acronyms WHERE acronym='${acronym.toLowerCase()}' AND department='${department}'`; // must fix to allow different cases
+
+  return new Promise((resolve, reject) => {
+    db.run(sqlInsert, [], (err) => {
+      if (err) reject(err);
+      else resolve("data successfully deleted from database");
+    });
+  });
+}
+
 async function updateAcronym(acronym, newDefinition, department = "none") {
   const getResult = await getByAcronymAndDepartment(acronym, department);
-  console.log(getResult);
 
   let sqlUpdate = `UPDATE acronyms set definition='${newDefinition}' WHERE acronym='${acronym}' AND department='${department}'`;
-  console.log(sqlUpdate);
   return new Promise((resolve, reject) => {
     db.run(sqlUpdate, [], (err) => {
       if (err) reject(err);
@@ -91,6 +100,7 @@ module.exports = {
   getByAcronym,
   getByAcronymAndDepartment,
   addAcronym,
+  deleteAcronym,
   updateAcronym,
   getAll,
 };
